@@ -1,0 +1,88 @@
+#####Problem 2#####
+#1. LOAD LIBRARIES
+library(tseries)
+library(fBasics)
+library(zoo)
+#a. IMPORT DATA
+#  Load data with variable names into the data frame "data"
+setwd("/Users/apple/Desktop/CSC425/homework2")
+data=read.table("NAPM.csv",header=T, sep=',') 
+
+# CREATE TIME SERIEs using ts() function.
+# ts(datavector, start=c(year, index), freq=nperiods)
+pmi = data[,2]
+
+#b.creates a time series object
+pts = ts(pmi, start=c(1980,1), freq=12)
+plot(pts,main="Time plot of PMI")
+
+# use time series object to draw time plot indexed with time
+# Time plot for pts
+plot(pts, type="l", xlab="Time", ylab="Purchasing Managers Index")
+# Time plot for pts growth rate
+plot(growth, type="l", xlab="Time", ylab="PMI growth rate")
+
+# COMPUTE SUMMARY STATISTICS
+basicStats(growth)
+
+#c. COMPUTES ACF VALUES AND ST. ERRORS
+#saves scf values into a variable
+acf_value=Acf(coredata(data$index), plot=T, lag=20)
+# COMPUTE LJUNG-BOX TEST FOR WHITE NOISE (NO AUTOCORRELATION)
+# to Lag 3
+Box.test(data$index,lag=3,type='Ljung')
+Box.test(data$index,lag=6,type='Ljung')
+
+#d.Plot PACF
+library(forecast)
+# PACF plot
+Pacf(data$index, main="PACF of growth rates")
+
+#e.Fit an adequate AR model
+#e.1.Exam the significance of the model coefficients
+##FIT AR MODEL OF GIVEN ORDER
+#Another approach to fit AR model of given order
+library(forecast)
+#fitting an AR(3) model
+m3=Arima(data$index, order=c(3,0,0), method="ML")  
+m3
+library(lmtest)
+coeftest(m3)
+#e.2.residual analysis
+#compute ACF functions of residuals
+acf(m3$resid)
+acf_value1=Acf(coredata(m3$resid), plot=T, lag=20)
+# Test if residuals are white noise using the Ljung-Box test
+Box.test(m3$resid, lag=3, type='Ljung', fitdf=2)
+Box.test(m3$resid, lag=6, type='Ljung', fitdf=2)
+Box.test(m3$resid, lag=9, type='Ljung', fitdf=2)
+
+# CREATE HISTOGRAM
+# par(mfcol=c(n,m)) creates n by m array for multiple plots
+par(mfcol=c(1,1)) 
+hist(m3$residuals, xlab="Residuals", prob=TRUE, main="Histogram")
+# add approximating normal density curve
+xfit<-seq(min(m3$residuals),max(m3$residuals),length=40)
+yfit<-dnorm(xfit,mean=mean(m3$residuals),sd=sd(m3$residuals))
+lines(xfit, yfit, col="blue", lwd=2) 
+
+# CREATE NORMAL PROBABILITY PLOT
+qqnorm(m3$residuals)
+qqline(m3$residuals, col = 2) 
+
+#g.Check stationarity
+#plot roots of polynomial in a unit-circle
+plot(m3)
+
+# COMPUTE ROOTS OF POLYNOMIAL
+polyroot(c(1,-m3$coef[1:3]))
+
+#h.Compute up to 5-step ahead forecasts
+f=forecast.Arima(m3, h=5)
+f
+
+#i.Plot the 10-step ahead forecasts
+plot(forecast.Arima(m3, h=10), include=50, main="Forecast Plot")
+lines(f$fitted,col="blue")
+predict(m3,n.ahead=10,se.fit=T)
+
